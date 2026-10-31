@@ -1,6 +1,7 @@
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 FLOWSYNC_EXPERIMENT_DB=/app/data/experiments.sqlite3 \
+    FLOWSYNC_ENGINE=fallback \
     SUMO_HOME=/usr/share/sumo PYTHONPATH=/usr/share/sumo/tools
 RUN apt-get update && apt-get install -y --no-install-recommends sumo sumo-tools curl \
     && rm -rf /var/lib/apt/lists/*

@@ -284,15 +284,34 @@ async def stream(socket: WebSocket):
             try:
                 response = await asyncio.to_thread(worker.call, "step")
                 await socket.send_json(_snapshot(response))
+            except WebSocketDisconnect:
+                break
             except RuntimeError as exc:
-                if "No simulation" in str(exc): await socket.send_json({"status": "idle"})
-                else: await socket.send_json({"status": "error", "detail": str(exc)})
+                if "No simulation" in str(exc):
+                    try:
+                        await socket.send_json({"status": "idle"})
+                    except Exception:
+                        break
+                else:
+                    try:
+                        await socket.send_json({"status": "error", "detail": str(exc)})
+                    except Exception:
+                        break
             except Exception as exc:
-                # A dead worker pipe (for example after a platform restart) must not
-                # immediately tear down the browser stream; the next call can restart it.
-                await socket.send_json({"status": "error", "detail": str(exc)})
+                if "disconnect" in type(exc).__name__.lower() or "close" in str(exc).lower():
+                    break
+                try:
+                    await socket.send_json({"status": "error", "detail": str(exc)})
+                except Exception:
+                    break
                 await asyncio.sleep(1)
                 continue
             await asyncio.sleep(.25)
-    except WebSocketDisconnect:
-        return
+    except Exception:
+        pass
+    finally:
+        try:
+            await socket.close()
+        except Exception:
+            pass
+

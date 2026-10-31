@@ -2,7 +2,7 @@ services:
   - type: web
     name: flowsyncai-api
     runtime: docker
-    plan: 1c-2g
+    plan: free
     region: singapore
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -10,7 +10,7 @@ services:
     maxShutdownDelaySeconds: 30
     envVars:
       - key: FLOWSYNC_EXPERIMENT_DB
-        value: /var/data/experiments.sqlite3
+        value: /tmp/experiments.sqlite3
       - key: DATABASE_URL
         sync: false
       - key: FLOWSYNC_LOG_LEVEL
@@ -18,8 +18,5 @@ services:
       - key: FLOWSYNC_CORS_ORIGINS
         value: https://flowsyncaiseva.vercel.app,http://localhost:5173
       - key: FLOWSYNC_ENGINE
-        value: auto
-    disk:
-      name: flowsync-data
-      mountPath: /var/data
-      sizeGB: 1
+        value: fallback
+

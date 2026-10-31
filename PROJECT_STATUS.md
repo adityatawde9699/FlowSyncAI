@@ -24,6 +24,8 @@
 - Dashboard experiment polling now stops on a stale-job `404` after API restart and tells the user to start a new comparison. The supplied logs show new emergency requests succeeding (`201`) and experiment submissions/status polling succeeding (`202`/`200`).
 - Fixed Render container restart loop caused by TraCI connection failures: `create_simulation` now catches SUMO initialization errors when `engine="auto"` and falls back gracefully to `TrafficSimulation`, caching the failure state to prevent repeated retry delays.
 - Configured `FLOWSYNC_TRACI_RETRIES` (defaulting to 1) in `SumoSimulation` to avoid long retry loops (100+ seconds) that trigger health check timeouts, and added `FLOWSYNC_ENGINE` environment variable support in `render.yaml`.
+- Handled WebSocket client disconnects cleanly in `/api/stream` to avoid ASGI `WebSocketDisconnected` exceptions when browsers refresh or close tabs.
+- Optimized for Render Free tier (512 MB RAM): set `FLOWSYNC_ENGINE=fallback` by default in Dockerfile and `render.yaml`, updated `plan: free`, and removed unneeded persistent disk configuration (Neon PostgreSQL handles persistence).
 
 ## In-progress tasks
 
