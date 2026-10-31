@@ -16,7 +16,8 @@
 - `docker compose config --quiet` succeeds; Docker image build is blocked by the sandbox's denied Docker socket access.
 - Added Render Blueprint and Vercel static SPA configuration; made the container honor Render's `PORT`, added `/health`, configured environment-driven CORS, and documented the two-platform setup.
 - Fixed the Render build error: Dockerfile health checks use `CMD` (Dockerfile syntax), not the Compose-only `CMD-SHELL` form. Render build retry is still required.
-- Deployment logs showed SUMO route lookup failures. The local installation reports SUMO 1.25.0 with TraCI 1.28.0; the Docker build now installs TraCI and sumolib matching the apt-installed SUMO version. Local instructions also describe version matching.
+- Deployment logs showed SUMO route lookup failures. The local installation reports SUMO 1.25.0 with TraCI 1.28.0; the Docker image now imports TraCI and sumolib from the same apt-installed SUMO tools directory, avoiding a separate pip version lookup. Local instructions also describe version matching.
+- Render's next build failed because its SUMO version text did not match the version-extraction expression. Removed that fragile extraction and verified that `/usr/share/sumo/tools` provides importable TraCI/sumolib modules.
 - Experiment job exceptions now return a terminal `failed` state instead of repeated HTTP 500 responses; the dashboard stops polling and displays the error. WebSocket stream worker errors are sent as state messages and retried.
 - Fixed the reported `'str' object has no attribute 'value'` experiment failure: API worker payloads now convert controller names back to `ControllerKind` before running experiments.
 - Dashboard experiment polling now stops on a stale-job `404` after API restart and tells the user to start a new comparison. The supplied logs show new emergency requests succeeding (`201`) and experiment submissions/status polling succeeding (`202`/`200`).
@@ -24,7 +25,7 @@
 ## In-progress tasks
 
 - **FS-004 (P0):** the API lifecycle test stalls during `TestClient` startup. A trivial standalone FastAPI app stalls the same way under the installed client stack, indicating an environment-level test-client issue; API behavior still needs verification through a compatible harness.
-- **FS-002 (P0):** a Docker fix now pins TraCI/sumolib to the installed SUMO package, but Render rebuild and runtime verification are still required. Local TCP socket binding is unavailable, so the integration test skips.
+- **FS-002 (P0):** Docker now uses the apt-provided TraCI/sumolib modules matching SUMO; a new Render build and runtime verification are still required. Local TCP socket binding is unavailable, so the integration test skips.
 
 ## Blocked tasks
 
@@ -59,7 +60,7 @@
 - Frontend rebuild after stale experiment ID handling → succeeds.
 - Render YAML parses with PyYAML; Vercel JSON parses; `flowsync/api/app.py` compiles.
 - `flowsync.simulation.sumo.availability()` → SUMO/netconvert/TraCI present; local TraCI socket unavailable.
-- Local tool versions: SUMO `1.25.0`, TraCI Python client `1.28.0`; this mismatch is now prevented in the Render Docker build by installing matching Python bindings.
+- Local tool versions: SUMO `1.25.0`, TraCI Python client `1.28.0`; Docker avoids this mismatch by using the apt-provided module path.
 
 ## Next recommended implementation task
 
