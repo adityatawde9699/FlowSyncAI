@@ -26,6 +26,7 @@
 - Configured `FLOWSYNC_TRACI_RETRIES` (defaulting to 1) in `SumoSimulation` to avoid long retry loops (100+ seconds) that trigger health check timeouts, and added `FLOWSYNC_ENGINE` environment variable support in `render.yaml`.
 - Handled WebSocket client disconnects cleanly in `/api/stream` to avoid ASGI `WebSocketDisconnected` exceptions when browsers refresh or close tabs.
 - Optimized for Render Free tier (512 MB RAM): set `FLOWSYNC_ENGINE=fallback` by default in Dockerfile and `render.yaml`, updated `plan: free`, and removed unneeded persistent disk configuration (Neon PostgreSQL handles persistence).
+- Designed and added custom FlowSync AI vector logo and comprehensive favicon suite (`favicon.svg`, multi-size `favicon.ico`, PNGs, `apple-touch-icon.png`), updating the frontend header and document metadata.
 
 ## In-progress tasks
 

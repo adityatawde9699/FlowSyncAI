@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%" fill="none">
+  <defs>
+    <radialGradient id="fsBg" cx="30%" cy="25%" r="85%">
+      <stop offset="0%" stop-color="#192a26"/>
+      <stop offset="60%" stop-color="#111c19"/>
+      <stop offset="100%" stop-color="#09100e"/>
+    </radialGradient>
+    <linearGradient id="fsBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.7"/>
+      <stop offset="50%" stop-color="#10b981" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.5"/>
+    </linearGradient>
+    <linearGradient id="streamGreen" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#a6edc4"/>
+      <stop offset="60%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="streamCyan" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="60%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="pulseGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#a6edc4"/>
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Container Squircle with Tech Border -->
+  <rect x="2.5" y="2.5" width="59" height="59" rx="14" fill="url(#fsBg)" stroke="url(#fsBorder)" stroke-width="1.8"/>
+
+  <!-- Subtle Network Grid Lines -->
+  <path d="M 21 15 L 21 49 M 33 15 L 33 49 M 45 15 L 45 49" stroke="#1d312c" stroke-width="1" stroke-dasharray="2 3"/>
+  <path d="M 15 20 L 49 20 M 15 32 L 49 32 M 15 44 L 49 44" stroke="#1d312c" stroke-width="1" stroke-dasharray="2 3"/>
+
+  <!-- Connected Flow Lines (The FlowSync 'F' Streamlines) -->
+  <!-- Main Vertical Trunk Line with rounded flow cap -->
+  <rect x="17.5" y="14" width="7" height="36" rx="3.5" fill="url(#streamGreen)"/>
+
+  <!-- Top Corridor Wave (Sweeping Eastbound Traffic) -->
+  <path d="M 21 14 L 42 14 C 45.3 14 48 16.7 48 20 C 48 23.3 45.3 26 42 26 L 21 26 Z" fill="url(#streamGreen)"/>
+
+  <!-- Middle Corridor Wave (Cyan Crossflow Traffic) -->
+  <path d="M 21 28.5 L 35 28.5 C 38.3 28.5 41 31.2 41 34.5 C 41 37.8 38.3 40.5 35 40.5 L 21 40.5 Z" fill="url(#streamCyan)"/>
+
+  <!-- Synchronized Signal Intersections (Nodes) -->
+  <!-- Top Node (Traffic Light Pulse) -->
+  <circle cx="42" cy="20" r="4.2" fill="#10b981" opacity="0.3" filter="url(#softGlow)"/>
+  <circle cx="42" cy="20" r="2.8" fill="#a6edc4"/>
+  <circle cx="42" cy="20" r="1.3" fill="#ffffff"/>
+
+  <!-- Mid Node (Cross-traffic Signal Pulse) -->
+  <circle cx="35" cy="34.5" r="4.2" fill="#06b6d4" opacity="0.3" filter="url(#softGlow)"/>
+  <circle cx="35" cy="34.5" r="2.8" fill="#67e8f9"/>
+  <circle cx="35" cy="34.5" r="1.3" fill="#ffffff"/>
+
+  <!-- Central Backbone Hubs -->
+  <circle cx="21" cy="20" r="2.2" fill="#ecfdf5"/>
+  <circle cx="21" cy="34.5" r="2.2" fill="#ecfdf5"/>
+  <circle cx="21" cy="46.5" r="2" fill="#34d399"/>
+</svg>
