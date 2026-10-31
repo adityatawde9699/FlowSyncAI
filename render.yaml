@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: flowsyncai-api
+    runtime: docker
+    plan: 1c-2g
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: FLOWSYNC_EXPERIMENT_DB
+        value: /var/data/experiments.sqlite3
+      - key: FLOWSYNC_LOG_LEVEL
+        value: INFO
+      - key: FLOWSYNC_CORS_ORIGINS
+        sync: false
+    disk:
+      name: flowsync-data
+      mountPath: /var/data
+      sizeGB: 1

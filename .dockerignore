@@ -1,0 +1,8 @@
+.git
+.pytest_cache
+__pycache__
+*.py[cod]
+.flowsync
+frontend/node_modules
+frontend/dist
+.venv

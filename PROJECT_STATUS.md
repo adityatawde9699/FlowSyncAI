@@ -1,0 +1,58 @@
+# FlowSync AI project status
+
+**Last audited:** 2026-10-31  
+**Overall estimated completion:** 48%  
+**Basis:** Core modules and substantial docs exist; the fallback demand duplication defect is fixed and regression-checked, the frontend builds, and platform configuration has been added. Live Render/Vercel deployment and cross-platform verification remain incomplete. This is an engineering completeness estimate, not a measured project KPI.
+
+## Completed tasks
+
+- Repository inventory and implementation review completed across simulation, safety, controllers, perception, API, experiments, persistence, frontend, tests, docs and packaging.
+- `TASKS.md` created with priorities, dependencies, expected outputs, acceptance criteria and relevant checks.
+- Five-intersection scenario generation, heterogeneous vehicle definitions, pedestrian route generation and seeded departures are implemented in source.
+- Fixed-time, actuated, Max Pressure and FlowSync controllers are implemented in source.
+- SQLite persistence, REST/WebSocket API, dashboard controls and experiment report paths are implemented in source.
+- FS-001 complete: removed duplicate fallback queue insertion and added a deterministic regression test.
+- Frontend TypeScript/Vite production build succeeds (`npm run build`); bundle warning reports a 541.85 kB minified JS chunk.
+- `docker compose config --quiet` succeeds; Docker image build is blocked by the sandbox's denied Docker socket access.
+- Added Render Blueprint and Vercel static SPA configuration; made the container honor Render's `PORT`, added `/health`, configured environment-driven CORS, and documented the two-platform setup.
+
+## In-progress tasks
+
+- **FS-004 (P0):** the API lifecycle test stalls during `TestClient` startup. A trivial standalone FastAPI app stalls the same way under the installed client stack, indicating an environment-level test-client issue; API behavior still needs verification through a compatible harness.
+- **FS-002 (P0):** SUMO/TraCI is installed, but local TCP socket binding is unavailable, so the integration test skips.
+
+## Blocked tasks
+
+- **FS-002 SUMO/TraCI runtime validation:** SUMO, netconvert and TraCI are present, but socket binding is unavailable (`traci_socket: false`), preventing TraCI launch.
+- **FS-004 API runtime validation:** API dependencies are present, but the lifecycle test hangs before its first request during TestClient startup.
+- **FS-006 Docker image validation:** Docker and Compose config validation are available; image build/run was not attempted.
+- **FS-012 video validation:** a compatible ONNX weights file and actual video fixture are not included in the repository.
+
+## Failed tests
+
+- Full `pytest -q` does not finish: verbose run isolates the stall at `test_api_validation_and_simulation_lifecycle_when_optional_api_is_installed`, at `TestClient(app)` startup. A 20-second faulthandler timeout confirms the main test thread waits in `TestClient.__enter__` while its AnyIO portal is idle. A minimal standalone FastAPI route with the same installed TestClient stack also hangs before entering the client context.
+- Excluding that API lifecycle test: `18 passed, 1 skipped, 1 deselected in 0.17s`.
+- The one skip is `test_sumo_integration_when_runtime_is_installed`; local socket binding is unavailable.
+
+## Remaining P0/P1 tasks
+
+- FS-002 SUMO runtime and state/metric checks.
+- FS-003 cross-engine safety verification.
+- FS-004 API startup/lifecycle diagnosis and WebSocket/persistence validation.
+- FS-005 browser control verification (production build passes).
+- FS-006 Compose deployment validation.
+- FS-022/FS-023 actual Render/Vercel Blueprint import, deploy and cross-origin live verification.
+- FS-007 through FS-014 capability-specific controller, coordination, incident, emergency, perception, experiment and observability validation.
+
+## Latest working commands
+
+- Repository inventory: `rg --files -g '!node_modules' -g '!dist' -g '!build' -g '!venv' -g '!.venv'`
+- `.venv/bin/python -m pytest -q -k 'not api_validation_and_simulation_lifecycle_when_optional_api_is_installed'` → 18 passed, 1 skipped, 1 deselected.
+- `docker compose config --quiet` → succeeds. `docker compose build` cannot access Docker's per-user buildx state in the read-only home; using `DOCKER_CONFIG=/tmp/...` advances to a denied `/var/run/docker.sock` connection.
+- `npm run build` in `frontend/` → succeeds with a Vite large-chunk warning.
+- Render YAML parses with PyYAML; Vercel JSON parses; `flowsync/api/app.py` compiles.
+- `flowsync.simulation.sumo.availability()` → SUMO/netconvert/TraCI present; local TraCI socket unavailable.
+
+## Next recommended implementation task
+
+Connect the pushed GitHub repo to the Render Blueprint and Vercel frontend project, fill in `FLOWSYNC_CORS_ORIGINS` and `VITE_API_URL` with the assigned domains, and verify deployed health/REST/WebSocket flows. This workspace has no usable Git metadata or deployment CLI credentials, so those platform connection steps cannot be completed from this checkout. Separately diagnose the local API TestClient startup hang and run SUMO where local sockets are allowed.

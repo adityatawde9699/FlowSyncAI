@@ -1,0 +1,22 @@
+services:
+  api:
+    build: .
+    environment:
+      FLOWSYNC_EXPERIMENT_DB: /app/data/experiments.sqlite3
+      FLOWSYNC_LOG_LEVEL: INFO
+    ports:
+      - "8001:8000"
+    volumes:
+      - flowsync-data:/app/data
+    restart: unless-stopped
+  dashboard:
+    build: ./frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+
+volumes:
+  flowsync-data:

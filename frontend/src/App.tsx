@@ -1,0 +1,77 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+
+type NodeState = {id:string;phase:string;stage:string;queues:Record<string,number>;queue_classes:Record<string,{kind:string;emergency:boolean}[]>;pedestrian_wait:Record<string,number>;communication:boolean;decision:string};
+type State = {time:number;engine:string;status:string;vehicles_passed:number;metrics:Record<string,any>;intersections:NodeState[];incidents:{id:string;kind:string;intersection_id:string;approach:string;severity:number}[];emergency_vehicles:{id:string;kind:string;intersection_id?:string;approach?:string;lane?:string;edge?:string;destination:string;waiting_seconds:number}[]};
+const API = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8001' : '')).replace(/\/$/, '');
+const WS = API.replace(/^http/, 'ws');
+const scenarios=['low-traffic','normal-traffic','peak-hour','asymmetric-traffic','road-blockage','emergency-movement','multiple-incidents','communication-failure','pedestrian-heavy'];
+
+export default function App() {
+  const [state,setState]=useState<State|null>(null), [controller,setController]=useState('flowsync');
+  const [error,setError]=useState(''),[busy,setBusy]=useState(false);
+  const [incidentKind,setIncidentKind]=useState('lane-blockage');
+  const [engine,setEngine]=useState('auto'),[emergencyKind,setEmergencyKind]=useState('ambulance');
+  const [experimentScenario,setExperimentScenario]=useState('normal-traffic'),[experimentId,setExperimentId]=useState(''),[experimentState,setExperimentState]=useState(''),[experimentResults,setExperimentResults]=useState<any>(null);
+  useEffect(()=>{
+    let active=true, socket:WebSocket|undefined, timer:number|undefined;
+    const connect=()=>{
+      if(!active)return;
+      if(!API){setError('Set VITE_API_URL to the Render API origin in Vercel project settings');return;}
+      socket=new WebSocket(`${WS}/api/stream`);
+      socket.onopen=()=>setError('');
+      socket.onmessage=e=>{const s=JSON.parse(e.data);if(s.intersections)setState(s)};
+      socket.onerror=()=>setError(`Live API unavailable · start FastAPI at ${API}`);
+      socket.onclose=()=>{if(active)timer=window.setTimeout(connect,1500)};
+    };
+    // Strict Mode runs setup/cleanup once before the real mount in development.
+    // Deferring the handshake lets that probe cancel without opening a socket.
+    timer=window.setTimeout(connect,0);
+    return()=>{active=false;if(timer!==undefined)window.clearTimeout(timer);socket?.close()};
+  },[]);
+  useEffect(()=>{if(!experimentId)return;let active=true;const poll=async()=>{try{const response=await fetch(`${API}/api/experiments/${experimentId}`);const data=await response.json();if(!response.ok)throw Error(data.detail||'Experiment request failed');if(!active)return;setExperimentState(data.status);if(data.status==='complete'){const result=await fetch(`${API}/api/experiments/${experimentId}/results`);setExperimentResults(await result.json())}}catch(e){if(active)setError(e instanceof Error?e.message:'Experiment failed')}};poll();const id=setInterval(poll,2000);return()=>{active=false;clearInterval(id)}},[experimentId]);
+  const action=async(path:string,body?:unknown,method='POST')=>{if(!API){setError('Set VITE_API_URL to the Render API origin in Vercel project settings');return;}setBusy(true);setError('');try{const r=await fetch(`${API}${path}`,{method,headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const data=await r.json();if(!r.ok)throw Error(data.detail||'Request failed');if(data.intersections)setState(data);}catch(e){setError(e instanceof Error?e.message:'Request failed')}finally{setBusy(false)}};
+  const metrics=state?.metrics||{};
+  const network=useMemo(()=>state?.intersections||[],[state]);
+  const chartData=useMemo(()=>{const group=experimentResults?.summary?.[experimentScenario]||{};return Object.entries(group).map(([name,value]:[string,any])=>({controller:name,delay:Number(value.mean_delay_seconds?.mean||0),queue:Number(value.average_queue_length?.mean||0)}))},[experimentResults,experimentScenario]);
+  const runExperiment=async()=>{if(!API){setError('Set VITE_API_URL to the Render API origin in Vercel project settings');return;}setExperimentResults(null);setExperimentState('queued');setError('');try{const response=await fetch(`${API}/api/experiments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenarios:[experimentScenario],seeds:[11,23,37],duration_seconds:600})});const result=await response.json();if(!response.ok)throw Error(result.detail||'Could not start experiment');setExperimentId(result.experiment_id)}catch(e){setError(e instanceof Error?e.message:'Could not start experiment')}};
+  return <main className="shell">
+    <header><div className="brand"><div className="mark">F</div><div><b>FlowSync<span> AI</span></b><small>INCIDENT-AWARE TRAFFIC CONTROL</small></div></div><div className="header-right"><span className="sim-badge"><i/> SIMULATION · {state?.engine||engine}</span><span className="live"><i/>{state?.status||'OFFLINE'}</span></div></header>
+    <section className="intro"><div><div className="eyebrow">NETWORK OPERATIONS / INDIA</div><h1>Traffic intelligence <em>in motion.</em></h1><p>Five connected intersections · mixed traffic · decentralized control</p></div><div className="clock"><small>SIMULATION TIME</small><strong>{String(Math.floor((state?.time||0)/60)).padStart(2,'0')}:{String((state?.time||0)%60).padStart(2,'0')}</strong></div></section>
+    <section className="metrics">
+      <Metric label="NETWORK THROUGHPUT" value={Number(metrics.throughput_vehicles||0).toLocaleString()} unit="vehicles exited"/>
+      <Metric label="MEAN VEHICLE DELAY" value={metricValue(metrics.mean_delay_seconds)} unit="seconds"/>
+      <Metric label="AVG QUEUE / APPROACH" value={Number(metrics.average_queue_length||0).toFixed(1)} unit="vehicles"/>
+      <Metric label="ACTIVE INCIDENTS" value={String(state?.incidents.length||0)} unit="network events"/>
+      <Metric label="95TH PERCENTILE DELAY" value={metricValue(metrics.p95_delay_seconds)} unit="seconds"/>
+      <Metric label="MAX QUEUE" value={String(metrics.maximum_queue_length||0)} unit="vehicles"/>
+      <Metric label="EMERGENCY DELAY" value={metricValue(metrics.emergency_vehicle_delay_seconds)} unit="seconds"/>
+      <Metric label="PEDESTRIAN WAIT" value={metricValue(metrics.pedestrian_wait_seconds)} unit="seconds"/>
+    </section>
+    <div className="columns">
+      <section className="panel map-panel"><div className="panel-head"><div><div className="eyebrow">LIVE NETWORK</div><h2>Corridor view</h2></div><span className="live"><i/> {network.length} intersections</span></div>
+        <div className="road"><div className="roadline"/>{network.map((n,i)=><div className="node-wrap" key={n.id} style={{left:`${10+i*20}%`}}><div className="queue-tags">{['W','E'].map(arm=><div className="queue-side" key={arm}>{(n.queue_classes?.[arm]||[]).slice(0,4).map((v,index)=><i className={v.emergency?'vehicle emergency-vehicle':`vehicle vehicle-${v.kind}`} key={`${arm}${index}`} title={v.kind}/>)}</div>)}</div><div className={`intersection ${n.stage!=='green'?'clearance':''}`}><span className="lamp red"/><span className={`lamp ${n.phase==='NS'&&n.stage==='green'?'green':'red'}`}/><span className={`lamp ${n.phase==='EW'&&n.stage==='green'?'green':'red'}`}/><b>{n.id}</b></div><div className="node-info"><strong>{n.phase} · {n.stage}</strong><small>{Object.values(n.queues).reduce((a,b)=>a+b,0)} veh · {Object.values(n.pedestrian_wait||{}).reduce((a,b)=>a+b,0)} ped</small></div></div>)}</div>
+        <div className="directions"><span>← WEST</span><span>4 LINKS · 5 SIGNALIZED NODES</span><span>EAST →</span></div>
+        <div className="subhead">INTERSECTION TELEMETRY</div><div className="node-table"><div className="table-row table-title"><span>NODE</span><span>NS</span><span>EW</span><span>ACTIVE DECISION</span><span>LINK</span></div>{network.map(n=><div className="table-row" key={n.id}><b>{n.id}</b><span>{n.queues.N+n.queues.S}</span><span>{n.queues.E+n.queues.W}</span><span className="decision">{n.decision}</span><span className={n.communication?'ok':'bad'}>{n.communication?'ONLINE':'FALLBACK'}</span></div>)}{!network.length&&<div className="empty">Start a simulation to stream live network state.</div>}</div>
+      </section>
+      <aside className="side">
+        <section className="panel"><div className="eyebrow">CONTROL STRATEGY</div><h2>Controller</h2><div className="controller-grid">{[['fixed-time','Fixed time'],['actuated','Actuated'],['max-pressure','Max pressure'],['flowsync','FlowSync']].map(([id,label])=><button className={controller===id?'selected':''} key={id} onClick={()=>{setController(id);action(`/api/simulations/controller/${id}`,undefined,'PUT')}}>{label}{controller===id&&<span>ACTIVE</span>}</button>)}</div>
+          <div className="engine-row"><label htmlFor="engine">SIMULATION ENGINE</label><select id="engine" value={engine} onChange={e=>setEngine(e.target.value)}><option value="auto">Auto · SUMO when available</option><option value="sumo">SUMO</option><option value="fallback">Deterministic fallback</option></select></div>
+          <div className="button-row"><button className="primary" disabled={busy} onClick={()=>action('/api/simulations',{seed:7,duration_seconds:1800,demand_per_hour:480,pedestrian_per_hour:70,emergency_per_hour:4,controller,engine})}>↻ New simulation</button><button disabled={busy||!state} onClick={()=>action(state?.status==='paused'?'/api/simulations/resume':'/api/simulations/pause')}>{state?.status==='paused'?'Resume':'Pause'}</button><button disabled={busy||!state||state.status==='stopped'} onClick={()=>action('/api/simulations/stop')}>Stop</button></div><div className="decision-box"><span className="pulse"/> CURRENT POLICY <b>{controller.toUpperCase()}</b><p>{network[0]?.decision||'Waiting for simulation state'}</p></div>
+        </section>
+        <section className="panel incident-panel"><div className="eyebrow">EVENT RESPONSE</div><h2>Incident injection</h2><p className="muted">Inject a simulated event at J2, north approach.</p><div className="incident-form"><select value={incidentKind} onChange={e=>setIncidentKind(e.target.value)}><option value="lane-blockage">Lane blockage</option><option value="capacity-reduction">Reduced capacity</option><option value="congestion">Sudden congestion</option><option value="vehicle-breakdown">Vehicle breakdown</option><option value="accident">Accident</option><option value="communication-failure">Communication failure</option></select><button className="primary" onClick={()=>action('/api/incidents',{kind:incidentKind,intersection_id:'J2',approach:'N',severity:.65})}>Inject event</button></div><div className="incident-list">{state?.incidents.map(i=><div className="incident" key={i.id}><span className="event-dot"/><div><b>{i.kind.replaceAll('-',' ')}</b><small>{i.intersection_id} / approach {i.approach}</small></div><button onClick={()=>action(`/api/incidents/${i.id}`,undefined,'DELETE')}>Clear</button></div>)}{!state?.incidents.length&&<div className="empty small-empty">No active network incidents</div>}</div></section>
+        <section className="panel emergency-panel"><div className="eyebrow">PRIORITY RESPONSE</div><h2>Emergency vehicles</h2><div className="incident-form"><select value={emergencyKind} onChange={e=>setEmergencyKind(e.target.value)}><option value="ambulance">Ambulance</option><option value="fire">Fire service</option><option value="police">Police</option></select><button className="primary" onClick={()=>action('/api/emergency-vehicles',{kind:emergencyKind,intersection_id:'J0'})}>Generate</button></div>{state?.emergency_vehicles.map(v=><div className="incident" key={v.id}><span className="emergency-dot"/><div><b>{v.kind} · {v.id}</b><small>{v.intersection_id||v.edge||v.lane||'en route'} · {v.destination}bound · {v.waiting_seconds}s wait</small></div></div>)}{!state?.emergency_vehicles.length&&<div className="empty small-empty">No active emergency requests</div>}</section>
+        <section className="panel safety"><div className="shield">✓</div><div><b>Signal interlock active</b><small>Minimum green · yellow · all-red clearance enforced</small></div></section>
+      </aside>
+    </div>
+    <section className="panel research"><div className="panel-head"><div><div className="eyebrow">RESEARCH &amp; EVALUATION</div><h2>Paired controller experiment</h2><p className="muted">Identical scenario and seed inputs · 3 seeds · 600 seconds · mean ± 95% CI in report</p></div><div className="experiment-controls"><select value={experimentScenario} onChange={e=>setExperimentScenario(e.target.value)}>{scenarios.map(s=><option key={s} value={s}>{s.replaceAll('-',' ')}</option>)}</select><button className="primary" disabled={experimentState==='running'||experimentState==='queued'} onClick={runExperiment}>Run comparison</button></div></div>
+      {experimentState&&<div className="experiment-status">Experiment {experimentId.slice(0,8)||'…'} · {experimentState}{experimentState==='complete'&&<a href={`${API}/api/experiments/${experimentId}/report?format=csv`}>Download CSV</a>}</div>}
+      {chartData.length>0&&<div className="chart-grid"><div><h3>Mean vehicle delay · seconds</h3><ResponsiveContainer width="100%" height={230}><BarChart data={chartData} margin={{top:8,right:12,left:0,bottom:4}}><CartesianGrid stroke="#2c3837" vertical={false}/><XAxis dataKey="controller" tick={{fill:'#9aaba4',fontSize:10}}/><YAxis tick={{fill:'#82938f',fontSize:9}}/><Tooltip contentStyle={{background:'#182222',border:'1px solid #40504b',borderRadius:6}}/><Bar dataKey="delay" fill="#9ce8bd" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div><div><h3>Time-average queue · vehicles per approach</h3><ResponsiveContainer width="100%" height={230}><BarChart data={chartData} margin={{top:8,right:12,left:0,bottom:4}}><CartesianGrid stroke="#2c3837" vertical={false}/><XAxis dataKey="controller" tick={{fill:'#9aaba4',fontSize:10}}/><YAxis tick={{fill:'#82938f',fontSize:9}}/><Tooltip contentStyle={{background:'#182222',border:'1px solid #40504b',borderRadius:6}}/><Bar dataKey="queue" fill="#8abed1" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div></div>}
+      {experimentState==='complete'&&<div className="experiment-note">Measured fallback/SUMO simulation outputs. Small sample: n=3 seeds per controller. See exported CSV for means, standard deviations and confidence intervals.</div>}
+    </section>
+    <footer><span>FLOWSYNC AI · RESEARCH SIMULATOR</span><span>NO CONNECTION TO PUBLIC TRAFFIC SIGNALS</span></footer>
+    {error&&<div className="toast" onClick={()=>setError('')}>{error} <b>×</b></div>}
+  </main>
+}
+function Metric({label,value,unit}:{label:string;value:string;unit:string}){return <article className="metric"><small>{label}</small><strong>{value}<i>{unit}</i></strong></article>}
+function metricValue(value:number|null|undefined){return value==null?'—':Number(value).toFixed(1)}

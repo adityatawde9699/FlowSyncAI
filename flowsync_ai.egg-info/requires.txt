@@ -1,0 +1,16 @@
+numpy>=1.26
+
+[api]
+fastapi>=0.110
+uvicorn[standard]>=0.27
+
+[dev]
+pytest>=8
+httpx>=0.27
+
+[perception]
+opencv-python-headless>=4.9
+
+[sumo]
+traci>=1.19
+sumolib>=1.19
