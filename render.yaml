@@ -16,7 +16,7 @@ services:
       - key: FLOWSYNC_LOG_LEVEL
         value: INFO
       - key: FLOWSYNC_CORS_ORIGINS
-        sync: false
+        value: https://flowsyncaiseva.vercel.app,http://localhost:5173
     disk:
       name: flowsync-data
       mountPath: /var/data

@@ -54,7 +54,25 @@ def connect(database_url: str | None, sqlite_path: Path | None) -> Iterator[Data
     if database_url:
         if psycopg is None:
             raise RuntimeError("DATABASE_URL is set; install PostgreSQL support with `pip install -e '.[postgres]'`")
-        connection = psycopg.connect(database_url)
+        # Neon DB (serverless PostgreSQL) requires SSL and has cold starts;
+        # add sslmode if not already specified and retry on transient failures.
+        connect_kwargs: dict[str, Any] = {"conninfo": database_url, "connect_timeout": 30}
+        if "sslmode" not in database_url:
+            connect_kwargs["conninfo"] += ("&" if "?" in database_url else "?") + "sslmode=require"
+        import time, logging
+        _log = logging.getLogger(__name__)
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                connection = psycopg.connect(**connect_kwargs)
+                break
+            except (psycopg.OperationalError, OSError) as exc:
+                last_exc = exc
+                _log.warning("Database connection attempt %d/3 failed: %s", attempt + 1, exc)
+                if attempt < 2:
+                    time.sleep(1.5 * (attempt + 1))
+        else:
+            raise RuntimeError(f"Failed to connect to database after 3 attempts: {last_exc}") from last_exc
         try:
             with connection:
                 yield DatabaseConnection(connection, postgres=True)

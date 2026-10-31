@@ -23,9 +23,13 @@ from flowsync.models import ControllerKind, IncidentKind, SimulationConfig, Vehi
 app = FastAPI(title="FlowSync AI", description="Simulation only; never controls public signals.", version="0.2.0")
 configure_logging()
 cors_origins = [origin.strip() for origin in os.environ.get(
-    "FLOWSYNC_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if origin.strip()]
+    "FLOWSYNC_CORS_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,https://flowsyncaiseva.vercel.app"
+).split(",") if origin.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=cors_origins,
-                   allow_credentials=False, allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["*"])
+                   allow_credentials=False, allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                   allow_headers=["*"],
+                   allow_origin_regex=r"https://.*\.vercel\.app")
 worker = SimulationWorker()
 experiment_pool = ProcessPoolExecutor(max_workers=1)
 experiment_jobs = {}
@@ -94,6 +98,21 @@ def _snapshot(response: dict):
             "incidents": [{"id": i.id, "kind": i.kind.value, "intersection_id": i.intersection_id,
                 "approach": i.approach, "severity": i.severity} for i in state.active_incidents],
             "emergency_vehicles": state.emergency_vehicles}
+
+@app.on_event("startup")
+def verify_database():
+    """Verify database connectivity on startup to surface config errors early."""
+    import logging
+    _log = logging.getLogger(__name__)
+    db_url, sqlite_path = experiment_store.database_url, experiment_store.path
+    _log.info("Database config: url=%s sqlite=%s", "set" if db_url else "none", sqlite_path)
+    try:
+        from flowsync.database import connect
+        with connect(db_url, sqlite_path) as conn:
+            conn.execute("SELECT 1")
+        _log.info("Database connection verified successfully")
+    except Exception as exc:
+        _log.error("Database connection failed at startup: %s", exc)
 
 
 @app.on_event("shutdown")
