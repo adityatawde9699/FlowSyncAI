@@ -14,6 +14,16 @@ from flowsync.database import configured_database, connect
 class SimulationStore:
     def __init__(self, path: str | Path | None = None):
         self.database_url, self.path = configured_database(path)
+        self._schema_ready = False
+        try:
+            self._ensure_schema()
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("SimulationStore: deferred schema init (DB not ready): %s", exc)
+
+    def _ensure_schema(self):
+        if self._schema_ready:
+            return
         with self._connect() as db:
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS simulations (
@@ -36,8 +46,10 @@ class SimulationStore:
                 CREATE INDEX IF NOT EXISTS idx_sim_events ON simulation_events(simulation_id,sim_time);
                 CREATE INDEX IF NOT EXISTS idx_sim_samples ON simulation_samples(simulation_id,sim_time);
             """)
+        self._schema_ready = True
 
     def start(self, config: dict[str, Any], engine: str, controller: str, seed: int) -> str:
+        self._ensure_schema()
         ident = str(uuid.uuid4())
         with self._connect() as db:
             db.execute("INSERT INTO simulations(simulation_id,started_at,seed,engine,controller,status,config_json) VALUES(?,?,?,?,?,?,?)",
@@ -45,21 +57,25 @@ class SimulationStore:
         return ident
 
     def event(self, simulation_id: str, sim_time: int, kind: str, payload: Any):
+        self._ensure_schema()
         with self._connect() as db:
             db.execute("INSERT INTO simulation_events VALUES(?,?,?,?,?)",
                 (str(uuid.uuid4()), simulation_id, sim_time, kind, _json(payload)))
 
     def sample(self, simulation_id: str, sim_time: int, metrics: dict):
+        self._ensure_schema()
         with self._connect() as db:
             db.execute("INSERT INTO simulation_samples VALUES(?,?,?,?)",
                 (str(uuid.uuid4()), simulation_id, sim_time, _json(metrics)))
 
     def status(self, simulation_id: str, status: str):
+        self._ensure_schema()
         with self._connect() as db:
             db.execute("UPDATE simulations SET status=?, ended_at=? WHERE simulation_id=?",
                 (status, datetime.now(timezone.utc).isoformat() if status in ("finished", "stopped", "failed") else None, simulation_id))
 
     def observation(self, simulation_id: str, observation):
+        self._ensure_schema()
         payload = {"vehicle_counts": observation.vehicle_counts, "queue_estimate": observation.queue_estimate,
                    "density": observation.density}
         with self._connect() as db:
@@ -68,6 +84,7 @@ class SimulationStore:
                  observation.confidence, observation.intersection_id, observation.approach, _json(payload)))
 
     def get_history(self, simulation_id: str):
+        self._ensure_schema()
         with self._connect() as db:
             session = db.execute("SELECT simulation_id,started_at,ended_at,seed,engine,controller,status,config_json FROM simulations WHERE simulation_id=?", (simulation_id,)).fetchone()
             if session is None: return None

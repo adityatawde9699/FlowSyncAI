@@ -42,6 +42,9 @@ def configured_database(path: str | Path | None = None) -> tuple[str | None, Pat
     if path is None:
         database_url = os.environ.get("DATABASE_URL")
         if database_url:
+            # Neon DB provides postgres:// URLs but psycopg3 requires postgresql://
+            if database_url.startswith("postgres://"):
+                database_url = "postgresql://" + database_url[len("postgres://"):]
             return database_url, None
         path = os.environ.get("FLOWSYNC_EXPERIMENT_DB", ".flowsync/experiments.sqlite3")
     sqlite_path = Path(path)
@@ -55,18 +58,20 @@ def connect(database_url: str | None, sqlite_path: Path | None) -> Iterator[Data
         if psycopg is None:
             raise RuntimeError("DATABASE_URL is set; install PostgreSQL support with `pip install -e '.[postgres]'`")
         # Neon DB (serverless PostgreSQL) requires SSL and has cold starts;
-        # add sslmode if not already specified and retry on transient failures.
-        connect_kwargs: dict[str, Any] = {"conninfo": database_url, "connect_timeout": 30}
-        if "sslmode" not in database_url:
-            connect_kwargs["conninfo"] += ("&" if "?" in database_url else "?") + "sslmode=require"
+        # add sslmode and connect_timeout if not already specified and retry on transient failures.
+        conninfo = database_url
+        if "sslmode" not in conninfo:
+            conninfo += ("&" if "?" in conninfo else "?") + "sslmode=require"
+        if "connect_timeout" not in conninfo:
+            conninfo += "&connect_timeout=30"
         import time, logging
         _log = logging.getLogger(__name__)
         last_exc: Exception | None = None
         for attempt in range(3):
             try:
-                connection = psycopg.connect(**connect_kwargs)
+                connection = psycopg.connect(conninfo)
                 break
-            except (psycopg.OperationalError, OSError) as exc:
+            except Exception as exc:
                 last_exc = exc
                 _log.warning("Database connection attempt %d/3 failed: %s", attempt + 1, exc)
                 if attempt < 2:
@@ -89,3 +94,4 @@ def connect(database_url: str | None, sqlite_path: Path | None) -> Iterator[Data
             yield DatabaseConnection(connection, postgres=False)
     finally:
         connection.close()
+
