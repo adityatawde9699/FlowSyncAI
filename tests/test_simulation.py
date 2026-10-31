@@ -155,6 +155,52 @@ def test_summary_omits_metrics_without_samples():
     assert result == {"x":{"flowsync":{}},"paired_differences":{"x":{}}}
 
 
+def test_experiment_status_returns_terminal_failure_state():
+    import pytest
+    pytest.importorskip("fastapi")
+    from flowsync.api import app as api_module
+
+    class FailedFuture:
+        @staticmethod
+        def done(): return True
+        @staticmethod
+        def result(): raise RuntimeError("SUMO route lookup failed")
+
+    experiment_id = "failed-status-test"
+    api_module.experiment_jobs[experiment_id] = FailedFuture()
+    try:
+        result = api_module.experiment_status(experiment_id)
+        assert result == {"experiment_id": experiment_id, "status": "failed",
+                          "error": "SUMO route lookup failed"}
+    finally:
+        api_module.experiment_jobs.pop(experiment_id, None)
+
+
+def test_api_experiment_worker_restores_controller_enums(monkeypatch):
+    import pytest
+    pytest.importorskip("fastapi")
+    from flowsync.api import app as api_module
+    from flowsync.models import ControllerKind
+
+    observed = {}
+
+    class RunnerSpy:
+        def __init__(self, store): pass
+        def run(self, **kwargs):
+            observed.update(kwargs)
+            return {"experiment_id": kwargs["experiment_id"]}
+
+    monkeypatch.setattr(api_module, "ExperimentStore", lambda: object())
+    monkeypatch.setattr(api_module, "ExperimentRunner", RunnerSpy)
+    result = api_module._run_experiment_process("enum-test", {
+        "scenarios": ["normal-traffic"], "seeds": [11], "duration_seconds": 60,
+        "controllers": ["flowsync", "max-pressure"],
+    })
+
+    assert result["experiment_id"] == "enum-test"
+    assert observed["controllers"] == [ControllerKind.FLOWSYNC, ControllerKind.MAX_PRESSURE]
+
+
 def test_sumo_scenario_sources_define_five_signals_and_heterogeneous_demand(tmp_path):
     import xml.etree.ElementTree as ET
     from flowsync.simulation.sumo import _write_routes, write_network_sources

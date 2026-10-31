@@ -56,7 +56,15 @@ flowsync --seconds 600 --seed 7 --controller flowsync --engine fallback
 pytest
 ```
 
-For the SUMO runtime, install the operating-system SUMO package and `python -m pip install -e '.[sumo]'`. Then `flowsync --engine auto ...` uses SUMO when all runtime components are found; otherwise it explicitly reports and uses the fallback. To require SUMO, use `--engine sumo`, which fails with a clear missing-dependency error instead of silently falling back.
+For the SUMO runtime, install the operating-system SUMO package and Python bindings that match its version. The following installs the optional bindings at the version reported by the local SUMO executable:
+
+```sh
+python -m pip install -e '.[sumo]'
+SUMO_VERSION="$(sumo --version | sed -n '1s/.*sumo \([0-9.]*\).*/\1/p')"
+python -m pip install "traci==${SUMO_VERSION}" "sumolib==${SUMO_VERSION}"
+```
+
+Then `flowsync --engine auto ...` uses SUMO when all runtime components are found; otherwise it explicitly reports and uses the fallback. To require SUMO, use `--engine sumo`, which fails with a clear missing-dependency error instead of silently falling back.
 
 Start the API and dashboard in separate terminals. In the API terminal:
 

@@ -20,7 +20,7 @@ export default function App() {
       if(!API){setError('Set VITE_API_URL to the Render API origin in Vercel project settings');return;}
       socket=new WebSocket(`${WS}/api/stream`);
       socket.onopen=()=>setError('');
-      socket.onmessage=e=>{const s=JSON.parse(e.data);if(s.intersections)setState(s)};
+      socket.onmessage=e=>{const s=JSON.parse(e.data);if(s.intersections)setState(s);else if(s.status==='error')setError(`Simulation stream error · ${s.detail||'worker unavailable'}`)};
       socket.onerror=()=>setError(`Live API unavailable · start FastAPI at ${API}`);
       socket.onclose=()=>{if(active)timer=window.setTimeout(connect,1500)};
     };
@@ -29,7 +29,7 @@ export default function App() {
     timer=window.setTimeout(connect,0);
     return()=>{active=false;if(timer!==undefined)window.clearTimeout(timer);socket?.close()};
   },[]);
-  useEffect(()=>{if(!experimentId)return;let active=true;const poll=async()=>{try{const response=await fetch(`${API}/api/experiments/${experimentId}`);const data=await response.json();if(!response.ok)throw Error(data.detail||'Experiment request failed');if(!active)return;setExperimentState(data.status);if(data.status==='complete'){const result=await fetch(`${API}/api/experiments/${experimentId}/results`);setExperimentResults(await result.json())}}catch(e){if(active)setError(e instanceof Error?e.message:'Experiment failed')}};poll();const id=setInterval(poll,2000);return()=>{active=false;clearInterval(id)}},[experimentId]);
+  useEffect(()=>{if(!experimentId)return;let active=true,interval:number|undefined;const poll=async()=>{try{const response=await fetch(`${API}/api/experiments/${experimentId}`);const data=await response.json();if(!active)return;if(response.status===404){if(interval!==undefined)clearInterval(interval);setExperimentState('unavailable');setError('This experiment is no longer tracked after an API restart. Run a new comparison.');return}if(!response.ok)throw Error(data.detail||'Experiment request failed');setExperimentState(data.status);if(data.status==='complete'){if(interval!==undefined)clearInterval(interval);const result=await fetch(`${API}/api/experiments/${experimentId}/results`);setExperimentResults(await result.json())}else if(data.status==='failed'){if(interval!==undefined)clearInterval(interval);setError(data.error||'Experiment failed')}}catch(e){if(active)setError(e instanceof Error?e.message:'Experiment failed')}};poll();interval=window.setInterval(poll,2000);return()=>{active=false;if(interval!==undefined)clearInterval(interval)}},[experimentId]);
   const action=async(path:string,body?:unknown,method='POST')=>{if(!API){setError('Set VITE_API_URL to the Render API origin in Vercel project settings');return;}setBusy(true);setError('');try{const r=await fetch(`${API}${path}`,{method,headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const data=await r.json();if(!r.ok)throw Error(data.detail||'Request failed');if(data.intersections)setState(data);}catch(e){setError(e instanceof Error?e.message:'Request failed')}finally{setBusy(false)}};
   const metrics=state?.metrics||{};
   const network=useMemo(()=>state?.intersections||[],[state]);

@@ -11,6 +11,8 @@ The supported split deployment serves the static Vite dashboard from Vercel and 
 3. During Blueprint setup, set `FLOWSYNC_CORS_ORIGINS` to the Vercel deployment origin(s), comma-separated and without paths. For example: `https://flowsync-ai.vercel.app`. Include the production origin; add preview origins only if browser previews need API access.
 4. After the first deploy, confirm `https://<render-service>.onrender.com/health` returns `{"status":"ok"}`. Keep the exact API origin for the Vercel setting below.
 
+The Docker build installs `traci` and `sumolib` at the same version as the SUMO executable installed by apt. Keep these versions aligned; TraCI protocol mismatches can break route lookup and emergency/experiment requests.
+
 Render's service name may need to be changed if `flowsyncai-api` is already taken. If so, use the actual generated `onrender.com` hostname in both the health check and Vercel configuration. The local SQLite store is intended for this single-instance research deployment; do not scale the disk-backed service to multiple instances.
 
 ### Vercel dashboard

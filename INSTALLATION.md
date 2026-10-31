@@ -22,7 +22,14 @@ set -a && . ./.env && set +a
 
 ## SUMO engine
 
-Install Eclipse SUMO and SUMO tools using the operating system's package manager or the SUMO installation guide. Ensure `sumo` and `netconvert` are on `PATH`; install the matching TraCI bindings with `python -m pip install -e '.[sumo]'`. `flowsync --engine sumo` requires all components; `--engine auto` uses SUMO only when all are detected.
+Install Eclipse SUMO and SUMO tools using the operating system's package manager or the SUMO installation guide. Ensure `sumo` and `netconvert` are on `PATH`. TraCI and sumolib must match the installed SUMO version; a mismatch can break commands such as emergency route lookup. For example, install bindings matching the `sumo --version` output:
+
+```sh
+SUMO_VERSION="$(sumo --version | sed -n '1s/.*sumo \([0-9.]*\).*/\1/p')"
+python -m pip install "traci==${SUMO_VERSION}" "sumolib==${SUMO_VERSION}"
+```
+
+`flowsync --engine sumo` requires all components; `--engine auto` uses SUMO only when all are detected.
 
 The system generates the network and demand files under `.flowsync/sumo-<seed>/`. Keep a run's generated directory with the SQLite experiment manifest when archiving research runs.
 

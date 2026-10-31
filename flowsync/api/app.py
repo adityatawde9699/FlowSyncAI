@@ -199,7 +199,8 @@ def save_observation(request: ObservationRequest):
 def _run_experiment_process(experiment_id, request_data):
     store = ExperimentStore()
     return ExperimentRunner(store).run(scenarios=request_data["scenarios"], seeds=request_data["seeds"],
-        duration_seconds=request_data["duration_seconds"], controllers=request_data["controllers"],
+        duration_seconds=request_data["duration_seconds"],
+        controllers=[ControllerKind(controller) for controller in request_data["controllers"]],
         experiment_id=experiment_id)
 
 
@@ -221,7 +222,8 @@ def experiment_status(experiment_id: str):
     if future is None: raise HTTPException(404, "Experiment not found in this API process")
     if not future.done(): return {"experiment_id": experiment_id, "status": "running"}
     try: result = future.result()
-    except Exception as exc: raise HTTPException(500, f"Experiment failed: {exc}") from exc
+    except Exception as exc:
+        return {"experiment_id": experiment_id, "status": "failed", "error": str(exc)}
     return {"experiment_id": experiment_id, "status": "complete", "summary": result["summary"],
             "run_count": len(result["runs"]), "method": result["method"]}
 
@@ -266,6 +268,12 @@ async def stream(socket: WebSocket):
             except RuntimeError as exc:
                 if "No simulation" in str(exc): await socket.send_json({"status": "idle"})
                 else: await socket.send_json({"status": "error", "detail": str(exc)})
+            except Exception as exc:
+                # A dead worker pipe (for example after a platform restart) must not
+                # immediately tear down the browser stream; the next call can restart it.
+                await socket.send_json({"status": "error", "detail": str(exc)})
+                await asyncio.sleep(1)
+                continue
             await asyncio.sleep(.25)
     except WebSocketDisconnect:
         return
