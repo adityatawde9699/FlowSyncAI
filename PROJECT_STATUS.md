@@ -18,6 +18,7 @@
 - Fixed the Render build error: Dockerfile health checks use `CMD` (Dockerfile syntax), not the Compose-only `CMD-SHELL` form. Render build retry is still required.
 - Deployment logs showed SUMO route lookup failures. The local installation reports SUMO 1.25.0 with TraCI 1.28.0; the Docker image now imports TraCI and sumolib from the same apt-installed SUMO tools directory, avoiding a separate pip version lookup. Local instructions also describe version matching.
 - Render's next build failed because its SUMO version text did not match the version-extraction expression. Removed that fragile extraction and verified that `/usr/share/sumo/tools` provides importable TraCI/sumolib modules.
+- Latest browser report shows Render returns HTTP 502 for API requests and cannot accept the WebSocket. The app CORS configuration is environment-driven; deploy health and `FLOWSYNC_CORS_ORIGINS` still need verification after Render is live. The workspace cannot resolve the Render hostname to probe it directly.
 - Experiment job exceptions now return a terminal `failed` state instead of repeated HTTP 500 responses; the dashboard stops polling and displays the error. WebSocket stream worker errors are sent as state messages and retried.
 - Fixed the reported `'str' object has no attribute 'value'` experiment failure: API worker payloads now convert controller names back to `ControllerKind` before running experiments.
 - Dashboard experiment polling now stops on a stale-job `404` after API restart and tells the user to start a new comparison. The supplied logs show new emergency requests succeeding (`201`) and experiment submissions/status polling succeeding (`202`/`200`).
@@ -26,6 +27,7 @@
 
 - **FS-004 (P0):** the API lifecycle test stalls during `TestClient` startup. A trivial standalone FastAPI app stalls the same way under the installed client stack, indicating an environment-level test-client issue; API behavior still needs verification through a compatible harness.
 - **FS-002 (P0):** Docker now uses the apt-provided TraCI/sumolib modules matching SUMO; a new Render build and runtime verification are still required. Local TCP socket binding is unavailable, so the integration test skips.
+- **FS-022 (P0):** the hosted API is currently returning 502. Push the updated Dockerfile and verify the latest Render deployment is Live before diagnosing app-level CORS.
 
 ## Blocked tasks
 
