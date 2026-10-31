@@ -15,6 +15,7 @@
 - Frontend TypeScript/Vite production build succeeds (`npm run build`); bundle warning reports a 541.85 kB minified JS chunk.
 - `docker compose config --quiet` succeeds; Docker image build is blocked by the sandbox's denied Docker socket access.
 - Added Render Blueprint and Vercel static SPA configuration; made the container honor Render's `PORT`, added `/health`, configured environment-driven CORS, and documented the two-platform setup.
+- Fixed the Render build error: Dockerfile health checks use `CMD` (Dockerfile syntax), not the Compose-only `CMD-SHELL` form. Render build retry is still required.
 
 ## In-progress tasks
 
@@ -49,6 +50,7 @@
 - Repository inventory: `rg --files -g '!node_modules' -g '!dist' -g '!build' -g '!venv' -g '!.venv'`
 - `.venv/bin/python -m pytest -q -k 'not api_validation_and_simulation_lifecycle_when_optional_api_is_installed'` → 18 passed, 1 skipped, 1 deselected.
 - `docker compose config --quiet` → succeeds. `docker compose build` cannot access Docker's per-user buildx state in the read-only home; using `DOCKER_CONFIG=/tmp/...` advances to a denied `/var/run/docker.sock` connection.
+- `docker build --check -t flowsyncai-api .` → blocked by denied `/var/run/docker.sock`; Dockerfile syntax fix is not locally daemon-validated.
 - `npm run build` in `frontend/` → succeeds with a Vite large-chunk warning.
 - Render YAML parses with PyYAML; Vercel JSON parses; `flowsync/api/app.py` compiles.
 - `flowsync.simulation.sumo.availability()` → SUMO/netconvert/TraCI present; local TraCI socket unavailable.
