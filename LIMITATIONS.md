@@ -5,7 +5,7 @@
 - SUMO network and seeded route/person-file generator, TraCI controller adapter, and deterministic fallback engine.
 - Four controller strategies, FlowSync downstream/context scoring, process-local communication failure fallback, incident insertion/removal and emergency request insertion.
 - A tested fallback signal interlock for minimum green, yellow/all-red, all-red pedestrian walk and clearance; emergency priority never overrides it.
-- REST/WebSocket control, process-isolated simulation worker, SQLite manifests/events/metrics/observation persistence, asynchronous paired experiments and report export.
+- REST/WebSocket control, process-isolated simulation worker, SQLite/PostgreSQL manifests/events/metrics/observation persistence, asynchronous paired experiments and report export.
 - React/TypeScript/Tailwind client, OpenCV YOLO ONNX adapter and queue tracker requiring real model files.
 
 ## Simulated versus observed

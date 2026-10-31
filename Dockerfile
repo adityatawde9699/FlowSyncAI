@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends sumo sumo-tools
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY flowsync ./flowsync
-RUN pip install --no-cache-dir '.[api]'
+RUN pip install --no-cache-dir '.[api,postgres]'
 RUN mkdir -p /app/data
 EXPOSE 8000
 HEALTHCHECK --interval=20s --timeout=5s --retries=3 CMD curl -fsS "http://127.0.0.1:${PORT:-8000}/health" >/dev/null || exit 1

@@ -11,6 +11,8 @@ services:
     envVars:
       - key: FLOWSYNC_EXPERIMENT_DB
         value: /var/data/experiments.sqlite3
+      - key: DATABASE_URL
+        sync: false
       - key: FLOWSYNC_LOG_LEVEL
         value: INFO
       - key: FLOWSYNC_CORS_ORIGINS

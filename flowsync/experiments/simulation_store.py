@@ -1,20 +1,19 @@
-"""SQLite persistence for simulation manifests, events, sampled metrics and observations."""
+"""Persistence for simulation manifests, events, sampled metrics and observations."""
 from __future__ import annotations
 
 import json
 import os
-import sqlite3
 import uuid
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from flowsync.database import configured_database, connect
+
 
 class SimulationStore:
     def __init__(self, path: str | Path | None = None):
-        self.path = Path(path or os.environ.get("FLOWSYNC_EXPERIMENT_DB", ".flowsync/experiments.sqlite3"))
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.database_url, self.path = configured_database(path)
         with self._connect() as db:
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS simulations (
@@ -82,13 +81,8 @@ class SimulationStore:
             "observations": [{"time": r[0], "source": r[1], "confidence": r[2], "intersection_id": r[3],
                               "approach": r[4], "data": json.loads(r[5])} for r in observations]}
 
-    @contextmanager
     def _connect(self):
-        db = sqlite3.connect(self.path, timeout=30)
-        db.execute("PRAGMA foreign_keys=ON")
-        try:
-            with db: yield db
-        finally: db.close()
+        return connect(self.database_url, self.path)
 
 
 def _json(value):

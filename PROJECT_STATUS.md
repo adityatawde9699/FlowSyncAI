@@ -1,7 +1,7 @@
 # FlowSync AI project status
 
 **Last audited:** 2026-10-31  
-**Overall estimated completion:** 49%  
+**Overall estimated completion:** 50%
 **Basis:** Core modules and substantial docs exist; a SUMO/TraCI version mismatch found during deployment diagnosis is fixed in the Docker build, and failed experiment jobs now report a terminal state. Live Render/Vercel deployment and cross-platform verification remain incomplete. This is an engineering completeness estimate, not a measured project KPI.
 
 ## Completed tasks
@@ -17,6 +17,7 @@
 - Added Render Blueprint and Vercel static SPA configuration; made the container honor Render's `PORT`, added `/health`, configured environment-driven CORS, and documented the two-platform setup.
 - Fixed the Render build error: Dockerfile health checks use `CMD` (Dockerfile syntax), not the Compose-only `CMD-SHELL` form. Render build retry is still required.
 - Deployment logs showed SUMO route lookup failures. The local installation reports SUMO 1.25.0 with TraCI 1.28.0; the Docker image now imports TraCI and sumolib from the same apt-installed SUMO tools directory, avoiding a separate pip version lookup. Local instructions also describe version matching.
+- Added a PostgreSQL-capable persistence adapter while preserving SQLite as the local default. `render.yaml` now prompts for an external `DATABASE_URL` (Neon); Docker installs the psycopg extra. Existing SQLite data is not migrated automatically, and the prior Render disk is retained until that data is checked.
 - Render's next build failed because its SUMO version text did not match the version-extraction expression. Removed that fragile extraction and verified that `/usr/share/sumo/tools` provides importable TraCI/sumolib modules.
 - Latest browser report shows Render returns HTTP 502 for API requests and cannot accept the WebSocket. The app CORS configuration is environment-driven; deploy health and `FLOWSYNC_CORS_ORIGINS` still need verification after Render is live. The workspace cannot resolve the Render hostname to probe it directly.
 - Experiment job exceptions now return a terminal `failed` state instead of repeated HTTP 500 responses; the dashboard stops polling and displays the error. WebSocket stream worker errors are sent as state messages and retried.
@@ -28,6 +29,7 @@
 - **FS-004 (P0):** the API lifecycle test stalls during `TestClient` startup. A trivial standalone FastAPI app stalls the same way under the installed client stack, indicating an environment-level test-client issue; API behavior still needs verification through a compatible harness.
 - **FS-002 (P0):** Docker now uses the apt-provided TraCI/sumolib modules matching SUMO; a new Render build and runtime verification are still required. Local TCP socket binding is unavailable, so the integration test skips.
 - **FS-022 (P0):** the hosted API is currently returning 502. Push the updated Dockerfile and verify the latest Render deployment is Live before diagnosing app-level CORS.
+- **Neon PostgreSQL deployment:** Blueprint/code are configured, but `DATABASE_URL` has not yet been entered in Render and database connectivity is unverified. Add the Neon connection URI to the Render API environment, redeploy, then confirm `/health` and a create/read/restart persistence check. SQLite history requires a separate migration if it must be preserved.
 
 ## Blocked tasks
 
@@ -62,6 +64,7 @@
 - Frontend rebuild after stale experiment ID handling → succeeds.
 - Render YAML parses with PyYAML; Vercel JSON parses; `flowsync/api/app.py` compiles.
 - `flowsync.simulation.sumo.availability()` → SUMO/netconvert/TraCI present; local TraCI socket unavailable.
+- `.venv/bin/python -m pytest -q tests/test_database.py tests/test_simulation.py -k 'not api_validation_and_simulation_lifecycle_when_optional_api_is_installed'` → 23 passed, 1 skipped, 1 deselected.
 - Local tool versions: SUMO `1.25.0`, TraCI Python client `1.28.0`; Docker avoids this mismatch by using the apt-provided module path.
 
 ## Next recommended implementation task

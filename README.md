@@ -37,9 +37,9 @@ The controller implementations and their mathematical formulation are described 
 - A TraCI engine that reads live queues and signal programs, runs fixed-time, actuated, Max Pressure and FlowSync decisions, and lets SUMO's generated signal program apply yellow/all-red clearance. SUMO is selected automatically when `sumo`, `netconvert` and Python TraCI are present.
 - A deterministic lightweight fallback for environments without SUMO. Its outputs are model results, not observed traffic statistics.
 - Minimum-green, yellow, all-red, dedicated all-red pedestrian walk and pedestrian-clearance interlocks in the fallback. Emergency requests influence phase choice and wait for ordinary safe transitions; they never force a conflicting green.
-- An optional FastAPI service with a separate simulation worker process, WebSocket state stream, incident and emergency controls, and SQLite manifests/events/metrics/observation storage.
+- An optional FastAPI service with a separate simulation worker process, WebSocket state stream, incident and emergency controls, and SQLite/PostgreSQL manifests/events/metrics/observation storage.
 - A React/TypeScript/Tailwind operations dashboard with live network state, incident controls, emergency requests, controller selection and comparative charts.
-- A paired experiment runner for nine scenarios, repeated seeds, per-class metrics, paired FlowSync-minus-baseline differences, Student-t confidence intervals, SQLite records and JSON/CSV reports.
+- A paired experiment runner for nine scenarios, repeated seeds, per-class metrics, paired FlowSync-minus-baseline differences, Student-t confidence intervals, persisted records and JSON/CSV reports.
 - An optional OpenCV DNN YOLO ONNX adapter and queue estimator. It requires actual model weights and labels; it does not invent detections.
 
 These are implemented capabilities, not a claim that every deployment or research scenario has been validated. See [PROJECT_STATUS.md](PROJECT_STATUS.md) and [LIMITATIONS.md](LIMITATIONS.md) for the current verification record and known gaps.
@@ -81,7 +81,7 @@ cp frontend/.env.example frontend/.env.local
 cd frontend && npm install && npm run dev
 ```
 
-Open `http://localhost:5173`; API documentation is at `http://127.0.0.1:8001/docs`. The dashboard controls a real simulation state stream, not static sample values. API runs live in a separate worker process. The default SQLite file is `.flowsync/experiments.sqlite3`; override it with `FLOWSYNC_EXPERIMENT_DB`.
+Open `http://localhost:5173`; API documentation is at `http://127.0.0.1:8001/docs`. The dashboard controls a real simulation state stream, not static sample values. API runs live in a separate worker process. The default SQLite file is `.flowsync/experiments.sqlite3`; override it with `FLOWSYNC_EXPERIMENT_DB`. Set `DATABASE_URL` to use PostgreSQL instead. Render deployment can use an externally managed Neon database.
 
 Or run the container setup with `docker compose up --build`; it installs SUMO and exposes the dashboard at port 5173 and API at port 8001.
 
@@ -92,7 +92,7 @@ flowsync --experiment --scenarios normal-traffic peak-hour emergency-movement \
   --seeds 11 23 37 41 53 --seconds 1800 --export results.json
 ```
 
-The command stores each run's seed, controller, scenario, configuration and metrics in SQLite. Reports include mean, standard deviation, confidence interval, per-class metrics and paired FlowSync-minus-baseline differences. Small exploratory runs are not evidence for the proposed research targets; run the full scenario and seed matrix using SUMO before making performance claims.
+The command stores each run's seed, controller, scenario, configuration and metrics in the configured database. Reports include mean, standard deviation, confidence interval, per-class metrics and paired FlowSync-minus-baseline differences. Small exploratory runs are not evidence for the proposed research targets; run the full scenario and seed matrix using SUMO before making performance claims.
 
 The experiment runner includes low, normal, peak, asymmetric, road-blockage, emergency-movement, multiple-incident, communication-failure and pedestrian-heavy scenarios. See [EXPERIMENT_METHODOLOGY.md](EXPERIMENT_METHODOLOGY.md) for metric definitions, pairing and recommended study procedure.
 
@@ -109,7 +109,7 @@ flowchart LR
   FALLBACK --> CONTROL
   CONTROL --> INTERLOCK[Signal and pedestrian safety]
   INTERLOCK --> STATE[Five intersection state]
-  WORKER --> DB[(SQLite sessions and results)]
+  WORKER --> DB[(SQLite locally / PostgreSQL in deployment)]
   VIDEO[Optional OpenCV YOLO adapter] --> OBS[Labelled observations]
 ```
 
@@ -128,7 +128,7 @@ flowchart LR
 
 ## Deploy the demo
 
-The repository includes a split deployment setup: the React/Vite dashboard runs on Vercel and the FastAPI/SUMO service runs on Render. Follow [DEPLOYMENT.md](DEPLOYMENT.md) to configure the GitHub-backed projects, `VITE_API_URL`, CORS origins and persistent SQLite storage. The Render Blueprint uses a paid plan for persistent storage; the API is not authenticated and is intended for a controlled research/demo environment.
+The repository includes a split deployment setup: the React/Vite dashboard runs on Vercel and the FastAPI/SUMO service runs on Render. Follow [DEPLOYMENT.md](DEPLOYMENT.md) to configure the GitHub-backed projects, `VITE_API_URL`, CORS origins and Neon `DATABASE_URL`. Local development continues to use SQLite unless `DATABASE_URL` is set. The API is not authenticated and is intended for a controlled research/demo environment.
 
 ## Scope and safety
 

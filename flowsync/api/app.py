@@ -3,7 +3,6 @@ import asyncio
 from concurrent.futures import ProcessPoolExecutor
 import os
 import re
-import sqlite3
 import uuid
 
 try:
@@ -14,6 +13,7 @@ except ImportError as exc:
     raise RuntimeError("Install FlowSync with `pip install -e '.[api]'` to use the HTTP API") from exc
 
 from flowsync.api.worker import SimulationWorker
+from flowsync.database import INTEGRITY_ERRORS
 from flowsync.experiments.runner import ExperimentRunner, SCENARIOS, summarize
 from flowsync.experiments.simulation_store import SimulationStore
 from flowsync.experiments.store import ExperimentStore
@@ -192,7 +192,7 @@ def save_observation(request: ObservationRequest):
     if any(value < 0 for value in request.vehicle_counts.values()):
         raise HTTPException(422, "vehicle counts must be non-negative")
     try: SimulationStore().observation(request.simulation_id, observation)
-    except sqlite3.IntegrityError as exc: raise HTTPException(404, "Simulation history not found") from exc
+    except INTEGRITY_ERRORS as exc: raise HTTPException(404, "Simulation history not found") from exc
     return {"status": "stored", "source": request.source, "simulation_id": request.simulation_id}
 
 

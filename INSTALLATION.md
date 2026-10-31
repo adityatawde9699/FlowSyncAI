@@ -31,7 +31,7 @@ python -m pip install "traci==${SUMO_VERSION}" "sumolib==${SUMO_VERSION}"
 
 `flowsync --engine sumo` requires all components; `--engine auto` uses SUMO only when all are detected.
 
-The system generates the network and demand files under `.flowsync/sumo-<seed>/`. Keep a run's generated directory with the SQLite experiment manifest when archiving research runs.
+The system generates the network and demand files under `.flowsync/sumo-<seed>/`. Keep a run's generated directory with its experiment manifest when archiving research runs. Local persistence defaults to SQLite; set `DATABASE_URL` to use PostgreSQL, including a Neon database.
 
 ## Dashboard
 

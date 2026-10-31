@@ -41,7 +41,7 @@ The SUMO configuration enables a 0.7 m sublane resolution on 3.5 m lanes. Vehicl
 
 ## Data and configuration
 
-SQLite stores simulation manifests, status, controller and incident/emergency events, periodic metrics, labelled observations and experiment run configs/results. `FLOWSYNC_EXPERIMENT_DB` selects the file. JSON structured logs use `FLOWSYNC_LOG_LEVEL`. Seeds, vehicle composition, demand, controller and engine are carried in each run manifest.
+The shared persistence adapter stores simulation manifests, status, controller and incident/emergency events, periodic metrics, labelled observations and experiment run configs/results. Local development defaults to SQLite (`FLOWSYNC_EXPERIMENT_DB`); setting `DATABASE_URL` selects PostgreSQL. The hosted Render API can connect to an external Neon database. JSON structured logs use `FLOWSYNC_LOG_LEVEL`. Seeds, vehicle composition, demand, controller and engine are carried in each run manifest.
 
 ## Decisions and boundaries
 

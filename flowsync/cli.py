@@ -18,7 +18,7 @@ def main():
     parser.add_argument("--experiment", action="store_true", help="run paired controller experiment matrix")
     parser.add_argument("--scenarios", nargs="+", help="experiment scenario names")
     parser.add_argument("--seeds", nargs="+", type=int, default=[11, 23, 37, 41, 53])
-    parser.add_argument("--store", default=".flowsync/experiments.sqlite3")
+    parser.add_argument("--store", help="SQLite file path override (otherwise use DATABASE_URL or the default SQLite file)")
     parser.add_argument("--export", help="write experiment report as .json or .csv")
     args = parser.parse_args()
     if args.experiment:

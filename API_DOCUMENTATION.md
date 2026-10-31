@@ -13,7 +13,7 @@ Install `.[api]`, run `uvicorn flowsync.api.app:app`, and browse `/docs`. The si
 | `POST` | `/api/simulations/stop` | Stop and close the active engine. |
 | `PUT` | `/api/simulations/controller/{controller}` | Set `fixed-time`, `actuated`, `max-pressure` or `flowsync`. |
 | `GET` | `/api/state` | Current actual state snapshot. |
-| `GET` | `/api/simulations/{simulation_id}/history` | Manifest, events, periodic metrics and labelled observations from SQLite. |
+| `GET` | `/api/simulations/{simulation_id}/history` | Manifest, events, periodic metrics and labelled observations from the configured database. |
 | `WS` | `/api/stream` | Stream live snapshots and advance while running. |
 
 ## Incidents and emergency vehicles
@@ -33,7 +33,7 @@ Install `.[api]`, run `uvicorn flowsync.api.app:app`, and browse `/docs`. The si
 - `GET /api/experiments/{id}/results` returns per-run records, per-scenario/per-class summaries and paired differences.
 - `GET /api/experiments/{id}/report?format=json|csv` downloads the report.
 
-Experiment jobs/status live in API-process memory; completed run data persists in SQLite. Restarting the API can make old job status unavailable while stored results remain queryable if the ID is known.
+Experiment jobs/status live in API-process memory; completed run data persists in the configured database (SQLite locally by default, PostgreSQL when `DATABASE_URL` is set). Restarting the API can make old job status unavailable while stored results remain queryable if the ID is known.
 
 ## Errors and safety
 
