@@ -17,6 +17,8 @@ services:
         value: INFO
       - key: FLOWSYNC_CORS_ORIGINS
         value: https://flowsyncaiseva.vercel.app,http://localhost:5173
+      - key: FLOWSYNC_ENGINE
+        value: auto
     disk:
       name: flowsync-data
       mountPath: /var/data

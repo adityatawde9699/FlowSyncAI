@@ -257,8 +257,9 @@ class SumoSimulation:
                                 approach_demand=config.approach_demand)
         binary = shutil.which("sumo-gui" if gui else "sumo") or shutil.which("sumo")
         self.label = f"flowsync-{uuid.uuid4().hex}"
+        retries = int(os.environ.get("FLOWSYNC_TRACI_RETRIES", "1"))
         traci.start([binary, "-c", str(cfg), "--seed", str(config.seed), "--no-step-log", "true"],
-                    label=self.label)
+                    label=self.label, numRetries=retries)
         self.conn = traci.getConnection(self.label)
         self._closed = False
         self.time = 0

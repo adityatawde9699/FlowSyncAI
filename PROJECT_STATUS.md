@@ -21,8 +21,9 @@
 - Render's next build failed because its SUMO version text did not match the version-extraction expression. Removed that fragile extraction and verified that `/usr/share/sumo/tools` provides importable TraCI/sumolib modules.
 - Latest browser report shows Render returns HTTP 502 for API requests and cannot accept the WebSocket. The app CORS configuration is environment-driven; deploy health and `FLOWSYNC_CORS_ORIGINS` still need verification after Render is live. The workspace cannot resolve the Render hostname to probe it directly.
 - Experiment job exceptions now return a terminal `failed` state instead of repeated HTTP 500 responses; the dashboard stops polling and displays the error. WebSocket stream worker errors are sent as state messages and retried.
-- Fixed the reported `'str' object has no attribute 'value'` experiment failure: API worker payloads now convert controller names back to `ControllerKind` before running experiments.
 - Dashboard experiment polling now stops on a stale-job `404` after API restart and tells the user to start a new comparison. The supplied logs show new emergency requests succeeding (`201`) and experiment submissions/status polling succeeding (`202`/`200`).
+- Fixed Render container restart loop caused by TraCI connection failures: `create_simulation` now catches SUMO initialization errors when `engine="auto"` and falls back gracefully to `TrafficSimulation`, caching the failure state to prevent repeated retry delays.
+- Configured `FLOWSYNC_TRACI_RETRIES` (defaulting to 1) in `SumoSimulation` to avoid long retry loops (100+ seconds) that trigger health check timeouts, and added `FLOWSYNC_ENGINE` environment variable support in `render.yaml`.
 
 ## In-progress tasks
 

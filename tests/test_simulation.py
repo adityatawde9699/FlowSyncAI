@@ -249,12 +249,56 @@ def test_normal_phase_transition_resets_min_green_timer():
 
 def test_auto_engine_falls_back_when_traci_socket_is_unavailable(monkeypatch):
     from flowsync.simulation import factory
+    factory.reset_sumo_failure()
     monkeypatch.setattr(factory, "availability", lambda: {
         "sumo": True, "netconvert": True, "traci": True, "traci_socket": False})
     config = SimulationConfig(duration_seconds=60, engine="auto")
     simulation = factory.create_simulation(config)
     assert isinstance(simulation, TrafficSimulation)
     assert config.engine == "fallback"
+
+
+def test_auto_engine_falls_back_when_sumo_init_raises(monkeypatch):
+    from flowsync.simulation import factory
+    factory.reset_sumo_failure()
+    monkeypatch.setattr(factory, "availability", lambda: {
+        "sumo": True, "netconvert": True, "traci": True, "traci_socket": True})
+
+    def mock_sumo_init(*args, **kwargs):
+        raise RuntimeError("TraCI connection refused")
+
+    monkeypatch.setattr(factory, "SumoSimulation", mock_sumo_init)
+    config = SimulationConfig(duration_seconds=60, engine="auto")
+    simulation = factory.create_simulation(config)
+    assert isinstance(simulation, TrafficSimulation)
+    assert config.engine == "fallback"
+    assert factory._sumo_failed is True
+
+    # Subsequent calls should immediately return fallback without calling SumoSimulation again
+    call_count = 0
+    def mock_sumo_init2(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        raise RuntimeError("Should not be called")
+    monkeypatch.setattr(factory, "SumoSimulation", mock_sumo_init2)
+    config2 = SimulationConfig(duration_seconds=60, engine="auto")
+    sim2 = factory.create_simulation(config2)
+    assert isinstance(sim2, TrafficSimulation)
+    assert call_count == 0
+    factory.reset_sumo_failure()
+
+
+def test_factory_honors_flowsync_engine_env(monkeypatch):
+    from flowsync.simulation import factory
+    factory.reset_sumo_failure()
+    monkeypatch.setenv("FLOWSYNC_ENGINE", "fallback")
+    monkeypatch.setattr(factory, "availability", lambda: {
+        "sumo": True, "netconvert": True, "traci": True, "traci_socket": True})
+    config = SimulationConfig(duration_seconds=60, engine="auto")
+    simulation = factory.create_simulation(config)
+    assert isinstance(simulation, TrafficSimulation)
+    assert config.engine == "fallback"
+
 
 
 def test_sumo_pedestrian_wait_records_completed_intervals():
